@@ -1,6 +1,8 @@
 export const login = (req, res) => {
     const { username, password } = req.body;
 
+    console.log('Login attempt:', { username, password, body: req.body }); // Debug log
+
     // Mock Authentication Logic
     if (username === 'admin' && password === '123456') {
         return res.status(200).json({
