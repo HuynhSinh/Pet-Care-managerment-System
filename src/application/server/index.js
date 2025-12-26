@@ -24,8 +24,10 @@ app.get('/', (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
 
 export default app; // For Vercel

@@ -2,10 +2,14 @@
     "name": "petcarex-monorepo",
     "version": "1.0.0",
     "private": true,
+    "workspaces": [
+        "client",
+        "server"
+    ],
     "scripts": {
         "install-all": "npm install --prefix client && npm install --prefix server",
         "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-        "build": "npm run build --prefix client"
+        "build": "npm run build --prefix client -- --outDir ../dist"
     },
     "devDependencies": {
         "concurrently": "^8.2.2"
