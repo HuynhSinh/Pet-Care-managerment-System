@@ -1,44 +1,44 @@
-# Hướng dẫn Deploy lên Render (Web Service)
+# Hướng dẫn Deploy lên Render (Updated)
 
-Để deploy ứng dụng PetCareX (Fullstack) lên Render dưới dạng một **Service duy nhất** (tiết kiệm chi phí và đơn giản), làm theo các bước sau:
+Hướng dẫn này áp dụng cho mô hình **Monorepo** nơi Server và Client chạy chung trên một Web Service.
 
-## 1. Chuẩn bị
-Code của bạn đã được cấu hình để:
-- **Build**: Vite sẽ build code React ra thư mục `dist` tại gốc ứng dụng.
-- **Run**: Node.js server sẽ phục vụ cả API (`/api/...`) và file tĩnh (React App) trên cùng một port.
-- **Start**: Lệnh `npm start` sẽ chạy file `server/index.js`.
+## 1. Kiểm tra cấu trúc dự án
+Đảm bảo bạn đã có các file sau (đã được cấu hình tự động):
+*   `package.json` (Root): Có script `build` và `start`.
+*   `server/index.js`: Có logic phục vụ file tĩnh từ thư mục `dist` và xử lý "catch-all route".
+*   `client/vite.config.ts`: Cấu hình build ra thư mục `dist`.
 
-## 2. Các bước trên Render Dashboard
+## 2. Deploy lên Render
 
-1.  Truy cập [Render Dashboard](https://dashboard.render.com/).
-2.  Nhấn **New +** -> chọn **Web Service**.
-3.  Kết nối với Git Repository của bạn.
-4.  Điền các thông tin cấu hình sau:
+1.  **Truy cập Render Dashboard:** [https://dashboard.render.com](https://dashboard.render.com)
+2.  **Tạo mới:** Chọn **New +** -> **Web Service**.
+3.  **Kết nối Git:** Chọn repository của bạn.
+4.  **Cấu hình Web Service:**
+    Điền chính xác các thông tin sau:
 
-    | Mục | Giá trị |
-    | :--- | :--- |
-    | **Name** | `petcarex-app` (hoặc tên tùy ý) |
-    | **Root Directory** | `src/application` |
-    | **Environment** | `Node` |
-    | **Build Command** | `npm run build` |
-    | **Start Command** | `npm start` |
+    | Mục | Giá trị | Giải thích |
+    | :--- | :--- | :--- |
+    | **Name** | `petcarex-app` | Tên app của bạn. |
+    | **Root Directory** | `src/application` | Render sẽ chạy lệnh từ thư mục này. |
+    | **Environment** | `Node` | Môi trường chạy server. |
+    | **Build Command** | `npm run build` | Lệnh này sẽ build React App ra thư mục `dist`. |
+    | **Start Command** | `npm start` | Lệnh này start Node server (`server/index.js`). |
 
-    *Giải thích*:
-    *   *Root Directory*: Render sẽ đi vào thư mục này trước khi chạy lệnh.
-    *   *Build Command*: Render sẽ chạy `npm install` (tự động) rồi chạy `npm run build` (để build React ra thư mục dist).
-    *   *Start Command*: Render sẽ chạy `node server/index.js`, server này sẽ host cả API và Frontend.
+5.  **Environment Variables (Biến môi trường):**
+    Thêm các biến sau vào mục "Environment Variables" (nếu chưa có):
+    *   `NODE_VERSION`: `20`
+    *   `SUPABASE_URL`: (Copy từ file .env cũ của bạn)
+    *   `SUPABASE_KEY`: (Copy từ file .env cũ của bạn)
+    *   ... các key khác nếu có.
 
-5.  **Environment Variables (Biến môi trường)**
-    Thêm các biến sau vào mục "Environment Variables":
-    *   `NODE_VERSION`: `20` (hoặc phiên bản phù hợp)
-    *   `SUPABASE_URL`: (URL Supabase của bạn)
-    *   `SUPABASE_ANON_KEY`: (Key Supabase của bạn)
+6.  **Deploy:** Nhấn **Create Web Service**.
 
-6.  Nhấn **Create Web Service**.
+## 3. Cách hoạt động
+*   Khi Render chạy `npm run build`: Hệ thống sẽ dùng Vite (trong folder client) để build giao diện ra thư mục `src/application/dist`.
+*   Khi Render chạy `npm start`: Hệ thống gọi `node server/index.js`.
+*   File `server/index.js` sẽ chạy Express server trên port được cấp (chúng ta dùng `process.env.PORT` nên nó tự khớp).
+*   Express server vừa đóng vai trò API Backend, vừa phục vụ file `index.html` và các file CSS/JS tĩnh cho người dùng truy cập.
 
-## 3. Hoàn tất
-Render sẽ bắt đầu build và deploy. Quá trình này mất khoảng 2-3 phút.
-Sau khi xong, bạn truy cập URL mà Render cung cấp.
-- Trang chủ sẽ tải React App.
-- API sẽ chạy tại `/api/...`.
-- F5 lại trang (Reload) vẫn sẽ hoạt động nhờ cấu hình "Catch-all route" trong server.
+**Lưu ý:**
+*   Nếu gặp lỗi liên quan đến file không tìm thấy, hãy kiểm tra kỹ phần **Root Directory** đã đặt đúng là `src/application` chưa.
+*   Lỗi 500 thường do thiếu biến môi trường hoặc lỗi logic code server, hãy vào tab **Logs** trên Render để xem chi tiết.
