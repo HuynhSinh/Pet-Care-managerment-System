@@ -1,17 +1,20 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/authRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import './config/supabase.js'; // Initialize Supabase config
 
 dotenv.config();
 
+// Fix __dirname for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Improve Vercel compatibility
-app.set('trust proxy', 1);
 
 // Request Logger Middleware
 app.use((req, res, next) => {
@@ -21,10 +24,15 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(cors({
-    origin: '*', // Allow all origins for now to prevent CORS issues
+    origin: '*',
     credentials: true
 }));
 app.use(express.json());
+
+// Serve Static Files (React App)
+// Assumes build output is in ../dist (relative to server/index.js)
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
 
 // Routes
 app.get('/api/ping', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
@@ -41,16 +49,13 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Health Check
-app.get('/', (req, res) => {
-    res.send('PetCareX API is running...');
+// Catch-All Handler for React (Must be after API routes)
+// This handles client-side routing by serving index.html for any unknown route
+app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
 });
 
 // Start Server
-if (!process.env.VERCEL) {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-    });
-}
-
-export default app; // For Vercel
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
