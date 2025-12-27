@@ -49,19 +49,17 @@ DBCC CHECKIDENT ('CHI_NHANH', RESEED, 0);
 
 PRINT '-> DA XOA SACH SE DU LIEU VA RESET ID!';
 
--- =================================================================
--- 2. TẠO HẠNG THÀNH VIÊN
--- =================================================================
-PRINT '2. Tao HANG_THANH_VIEN...';
+PRINT '=== BAT DAU NAP DU LIEU NEN TANG ===';
+
+-- 1. TẠO HẠNG THÀNH VIÊN
+PRINT '1. Tao HANG_THANH_VIEN...';
 INSERT INTO HANG_THANH_VIEN (TenHang, ChiTieuGiuHang, ChiTieuDatHang) VALUES 
 (N'Cơ bản', 0, 0),
 (N'Thân thiết', 3000000, 5000000),
 (N'VIP', 8000000, 12000000);
 
--- =================================================================
--- 3. TẠO 10 CHI NHÁNH
--- =================================================================
-PRINT '3. Tao 10 CHI_NHANH...';
+-- 2. TẠO 10 CHI NHÁNH
+PRINT '2. Tao 10 CHI_NHANH...';
 INSERT INTO CHI_NHANH (TenCN, DiaChi, SDT, TGMoCua, TGDongCua) VALUES 
 (N'PetCareX Quận 1', N'123 Nguyễn Huệ, Q.1, TP.HCM', '0281000001', '08:00', '21:00'),
 (N'PetCareX Quận 3', N'45 Võ Văn Tần, Q.3, TP.HCM', '0281000002', '08:00', '21:00'),
@@ -74,38 +72,33 @@ INSERT INTO CHI_NHANH (TenCN, DiaChi, SDT, TGMoCua, TGDongCua) VALUES
 (N'PetCareX Đà Nẵng - Hải Châu', N'200 Nguyễn Văn Linh, Đà Nẵng', '0236000001', '08:00', '20:30'),
 (N'PetCareX Cần Thơ - Ninh Kiều', N'30/4 Ninh Kiều, Cần Thơ', '0292000001', '08:00', '20:30');
 
--- =================================================================
--- 4. TẠO 3 LOẠI DỊCH VỤ (Có thêm cột MoTa)
--- =================================================================
-PRINT '4. Tao DICH_VU...';
+-- 3. TẠO LOẠI DỊCH VỤ
+PRINT '3. Tao DICH_VU...';
 INSERT INTO DICH_VU (LoaiDV, MoTa) VALUES 
 (N'Khám bệnh', N'Khám lâm sàng, chẩn đoán và điều trị bệnh cho thú cưng'),
 (N'Tiêm phòng', N'Tiêm vắc-xin phòng bệnh định kỳ (Dại, Care, Parvo...)'),
 (N'Mua hàng', N'Mua sắm thức ăn, phụ kiện, thuốc men tại quầy');
 
--- =================================================================
--- 5. TẠO DỊCH VỤ CUNG CẤP (Mapping Chi nhánh - Dịch vụ)
--- =================================================================
-PRINT '5. Tao DICH_VU_CUNG_CAP (Moi chi nhanh co 2-3 dich vu)...';
+-- 4. TẠO DỊCH VỤ CUNG CẤP (Dùng biến để lấy ID, cực kỳ an toàn)
+PRINT '4. Tao DICH_VU_CUNG_CAP...';
 
-DECLARE @i INT = 1;
-DECLARE @MaxCN INT = (SELECT COUNT(*) FROM CHI_NHANH);
+DECLARE @IdKham INT = (SELECT MaDV FROM DICH_VU WHERE LoaiDV = N'Khám bệnh');
+DECLARE @IdTiem INT = (SELECT MaDV FROM DICH_VU WHERE LoaiDV = N'Tiêm phòng');
+DECLARE @IdMua INT = (SELECT MaDV FROM DICH_VU WHERE LoaiDV = N'Mua hàng');
 
-WHILE @i <= @MaxCN
+DECLARE @k INT = 1;
+WHILE @k <= 10
 BEGIN
-    -- Mặc định thêm Khám bệnh (ID 1) và Tiêm phòng (ID 2)
-    -- Thêm cột TrangThai = 1 (Đang hoạt động)
-    INSERT INTO DICH_VU_CUNG_CAP (MaCN, MaDV, TrangThai) VALUES (@i, 1, 1);
-    INSERT INTO DICH_VU_CUNG_CAP (MaCN, MaDV, TrangThai) VALUES (@i, 2, 1);
+    INSERT INTO DICH_VU_CUNG_CAP (MaCN, MaDV, TrangThai) VALUES (@k, @IdKham, 1);
+    INSERT INTO DICH_VU_CUNG_CAP (MaCN, MaDV, TrangThai) VALUES (@k, @IdTiem, 1);
     
-    -- Random 70% chi nhánh có thêm "Mua hàng" (ID 3)
+    -- Random 70% chi nhánh có thêm "Mua hàng"
     IF (ABS(CAST(CHECKSUM(NEWID()) AS BIGINT)) % 10) < 7 
-    BEGIN
-        INSERT INTO DICH_VU_CUNG_CAP (MaCN, MaDV, TrangThai) VALUES (@i, 3, 1);
-    END
+        INSERT INTO DICH_VU_CUNG_CAP (MaCN, MaDV, TrangThai) VALUES (@k, @IdMua, 1);
     
-    SET @i = @i + 1;
+    SET @k = @k + 1;
 END
+GO
 
 
 ------------------------------------------------------------------------------------------------------------------------------
@@ -277,7 +270,7 @@ BEGIN
     ELSE SET @RandTime = 36;
 
     -- Ưu đãi
-    SET @RandUuDai = (ABS(CAST(CHECKSUM(NEWID()) AS BIGINT)) % 4 + 1) * 5;
+    SET @RandUuDai = (ABS(CAST(CHECKSUM(NEWID()) AS BIGINT)) % 3 + 1) * 5;
 
     -- Insert
     INSERT INTO GOI_TIEM (TenGoi, ThoiGian, UuDai)
