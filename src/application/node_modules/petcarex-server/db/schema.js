@@ -57,6 +57,10 @@ export const ttKhamBenh = pgTable("tt_kham_benh", {
     mahddv: integer("mahddv").references(() => ctHoaDonDv.mahddv),
     ngaykham: timestamp("ngaykham").defaultNow(),
     dongia: numeric("dongia"),
+    matc: integer("matc").references(() => thuCung.matc),
+    bsphutrach: integer("bsphutrach").references(() => nhanVien.manv),
+    chuandoan: text("chuandoan"),
+    toathuoc: text("toathuoc"),
 });
 
 export const ttTiemPhong = pgTable("tt_tiem_phong", {
@@ -64,6 +68,9 @@ export const ttTiemPhong = pgTable("tt_tiem_phong", {
     mahddv: integer("mahddv").references(() => ctHoaDonDv.mahddv),
     ngaytiem: timestamp("ngaytiem").defaultNow(),
     dongia: numeric("dongia"),
+    matc: integer("matc").references(() => thuCung.matc),
+    nguoitiem: integer("nguoitiem").references(() => nhanVien.manv),
+    loaivacxin: varchar("loaivacxin"),
 });
 
 export const nhanVien = pgTable("nhan_vien", {
