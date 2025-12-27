@@ -58,11 +58,14 @@ END
 GO
 
 -- 3. Báo cáo tồn kho sản phẩm bán lẻ (cảnh báo sắp hết hàng)
+-- Sửa lại usp_TonKhoSanPham (chỉ hiển thị sản phẩm sắp hết hoặc dưới ngưỡng)
 CREATE OR ALTER PROCEDURE usp_TonKhoSanPham
-    @NguongCanhBao INT = 10  -- tồn kho <= ngưỡng này sẽ cảnh báo
+    @NguongCanhBao INT = 10  -- Tồn kho <= ngưỡng này sẽ được liệt kê
 AS
 BEGIN
-    SELECT 
+    SET NOCOUNT ON;
+
+    SELECT
         MaSP,
         TenSP,
         LoaiSP,
@@ -72,6 +75,7 @@ BEGIN
             ELSE N'Bình thường'
         END AS TrangThai
     FROM SAN_PHAM
+    WHERE SoLuongTonKho <= @NguongCanhBao  -- CHỈ LẤY NHỮNG SẢN PHẨM DƯỚI HOẶC BẰNG NGƯỠNG
     ORDER BY SoLuongTonKho ASC;
 END
 GO
@@ -114,24 +118,40 @@ GO
 -- 6. Khách hàng lâu chưa quay lại (cấp chi nhánh)
 CREATE OR ALTER PROCEDURE usp_KhachHangLauChuaQuayLai
     @MaCN INT = NULL,
-    @SoThang INT = 6  -- lâu hơn bao nhiêu tháng chưa đến
+    @SoThang INT = 6
 AS
 BEGIN
+    SET NOCOUNT ON;
+
     DECLARE @NgayCat DATE = DATEADD(MONTH, -@SoThang, CAST(GETDATE() AS DATE));
 
-    SELECT 
-        kh.MaKH,
-        kh.TenKH,
-        kh.SDT,
-        ISNULL(cn.TenCN, N'Không xác định') AS ChiNhanhCuoi,
-        MAX(hd.NgayLap) AS LanCuoiDen
-    FROM KHACH_HANG kh
-    JOIN HOA_DON hd ON kh.MaKH = hd.MaKH
-    LEFT JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
-    WHERE (@MaCN IS NULL OR hd.MaCN = @MaCN)
-    GROUP BY kh.MaKH, kh.TenKH, kh.SDT, cn.TenCN
-    HAVING MAX(hd.NgayLap) < @NgayCat
-    ORDER BY LanCuoiDen DESC;
+    WITH LanCuoi AS (
+        SELECT
+            kh.MaKH,
+            kh.TenKH,
+            kh.SDT,
+            cn.MaCN,
+            cn.TenCN,
+            hd.NgayLap,
+            ROW_NUMBER() OVER (
+                PARTITION BY kh.MaKH
+                ORDER BY hd.NgayLap DESC
+            ) AS rn
+        FROM KHACH_HANG kh
+        JOIN HOA_DON hd ON kh.MaKH = hd.MaKH
+        JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
+    )
+    SELECT
+        MaKH,
+        TenKH,
+        SDT,
+        TenCN AS ChiNhanhCuoi,
+        NgayLap AS LanCuoiDen
+    FROM LanCuoi
+    WHERE rn = 1
+      AND NgayLap < @NgayCat
+      AND (@MaCN IS NULL OR MaCN = @MaCN)
+    ORDER BY NgayLap DESC;
 END
 GO
 
@@ -142,28 +162,45 @@ CREATE OR ALTER PROCEDURE usp_HieuSuatNhanVien
     @DenNgay DATE = NULL
 AS
 BEGIN
+    SET NOCOUNT ON;
+
     SELECT 
         nv.MaNV,
         nv.HoTen,
         nv.ChucVu,
         cn.TenCN,
-        COUNT(hd.MaHD) AS SoHoaDonLap,
-        ISNULL(AVG(CAST(dg.DiemThaiDoNV AS FLOAT)), 0) AS DiemDanhGiaTrungBinh
+        COUNT(DISTINCT hd.MaHD) AS SoHoaDonLap,
+        dgcn.DiemDanhGiaTrungBinh -- điểm của chi nhánh
     FROM NHAN_VIEN nv
-    LEFT JOIN HOA_DON hd ON nv.MaNV = hd.MaNV
-                          AND (@TuNgay IS NULL OR hd.NgayLap >= @TuNgay)
-                          AND (@DenNgay IS NULL OR hd.NgayLap <= @DenNgay)
+    LEFT JOIN HOA_DON hd
+        ON nv.MaNV = hd.MaNV
+        AND (@TuNgay IS NULL OR hd.NgayLap >= @TuNgay)
+        AND (
+            @DenNgay IS NULL 
+            OR hd.NgayLap < DATEADD(DAY, 1, @DenNgay)
+        )
     LEFT JOIN CHI_NHANH cn ON nv.MaCN = cn.MaCN
-    LEFT JOIN DANH_GIA dg ON dg.MaCN = nv.MaCN
+
+    -- SUBQUERY TÍNH ĐIỂM ĐÁNH GIÁ CHI NHÁNH
+    LEFT JOIN (
+        SELECT 
+            MaCN,
+            AVG(CAST(DiemThaiDoNV AS FLOAT)) AS DiemDanhGiaTrungBinh
+        FROM DANH_GIA
+        GROUP BY MaCN
+    ) dgcn ON dgcn.MaCN = nv.MaCN
+
     WHERE (@MaCN IS NULL OR nv.MaCN = @MaCN)
-    GROUP BY nv.MaNV, nv.HoTen, nv.ChucVu, cn.TenCN
+    GROUP BY 
+        nv.MaNV,
+        nv.HoTen,
+        nv.ChucVu,
+        cn.TenCN,
+        dgcn.DiemDanhGiaTrungBinh
     ORDER BY SoHoaDonLap DESC;
 END
 GO
-USE PetCareX;
-GO
-USE PetCareX;
-GO
+
 
 -- 8. Thống kê thú cưng theo loài và giống (cấp công ty)
 CREATE OR ALTER PROCEDURE usp_ThongKeThuCungTheoLoaiGiong
@@ -201,38 +238,41 @@ CREATE OR ALTER PROCEDURE usp_LichSuChamSocThuCung
     @MaTC INT
 AS
 BEGIN
-    -- Lịch sử khám bệnh
-    SELECT 'Khám bệnh' AS Loai, 
-           kb.NgayKham AS Ngay,
-           nv.HoTen AS NguoiThucHien,
-           kb.TrieuChung,
-           kb.ChuanDoan
-    FROM TT_KHAM_BENH kb
-    JOIN NHAN_VIEN nv ON kb.BSPhuTrach = nv.MaNV
-    WHERE kb.MaTC = @MaTC
+    SELECT *
+    FROM (
+        -- Lịch sử khám bệnh
+        SELECT 
+            N'Khám bệnh' AS Loai,
+            kb.NgayKham AS Ngay,
+            nv.HoTen AS NguoiThucHien,
+            kb.TrieuChung AS MoTa1,
+            kb.ChuanDoan AS MoTa2
+        FROM TT_KHAM_BENH kb
+        JOIN NHAN_VIEN nv ON kb.BSPhuTrach = nv.MaNV
+        WHERE kb.MaTC = @MaTC
 
-    UNION ALL
+        UNION ALL
 
-    -- Lịch sử tiêm phòng
-    SELECT 'Tiêm phòng' AS Loai,
-           tp.NgayTiem AS Ngay,
-           nv.HoTen AS NguoiThucHien,
-           tp.LoaiVacXin AS MoTa,
-           CASE WHEN tp.MaGoi IS NOT NULL THEN gt.TenGoi ELSE NULL END AS Goi
-    FROM TT_TIEM_PHONG tp
-    LEFT JOIN GOI_TIEM gt ON tp.MaGoi = gt.MaGoi
-    JOIN NHAN_VIEN nv ON tp.NguoiTiem = nv.MaNV
-    WHERE tp.MaTC = @MaTC
-
+        -- Lịch sử tiêm phòng
+        SELECT 
+            N'Tiêm phòng' AS Loai,
+            tp.NgayTiem AS Ngay,
+            nv.HoTen AS NguoiThucHien,
+            tp.LoaiVacXin AS MoTa1,
+            gt.TenGoi AS MoTa2
+        FROM TT_TIEM_PHONG tp
+        LEFT JOIN GOI_TIEM gt ON tp.MaGoi = gt.MaGoi
+        JOIN NHAN_VIEN nv ON tp.NguoiTiem = nv.MaNV
+        WHERE tp.MaTC = @MaTC
+    ) AS LichSu
     ORDER BY Ngay DESC;
 END
 GO
-
 -- 11. Báo cáo danh sách thú cưng đã tiêm phòng trong khoảng thời gian (cấp chi nhánh hoặc toàn hệ thống)
 CREATE OR ALTER PROCEDURE usp_DanhSachThuCungTiemPhong
     @MaCN INT = NULL,
-    @TuNgay DATE,
-    @DenNgay DATE
+    @TuNgay DATE = NULL,
+    @DenNgay DATE = NULL
 AS
 BEGIN
     SELECT 
@@ -253,12 +293,12 @@ BEGIN
     JOIN CT_HOA_DON_DV dv ON tp.MaHDDV = dv.MaHDDV
     JOIN HOA_DON hd ON dv.MaHD = hd.MaHD
     JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
-    WHERE CAST(tp.NgayTiem AS DATE) BETWEEN @TuNgay AND @DenNgay
+    WHERE (@TuNgay IS NULL OR tp.NgayTiem >= @TuNgay)
+      AND (@DenNgay IS NULL OR tp.NgayTiem < DATEADD(DAY, 1, @DenNgay))
       AND (@MaCN IS NULL OR hd.MaCN = @MaCN)
     ORDER BY tp.NgayTiem DESC;
 END
 GO
-
 -- 12. Quản lý nhân viên chi nhánh: Danh sách nhân viên hiện tại theo chi nhánh
 CREATE OR ALTER PROCEDURE usp_DanhSachNhanVienChiNhanh
     @MaCN INT = NULL  -- NULL = tất cả chi nhánh
@@ -300,27 +340,30 @@ GO
 
 -- 14. Báo cáo điểm đánh giá trung bình của từng chi nhánh
 CREATE OR ALTER PROCEDURE usp_DanhGiaChiNhanh
-    @Nam INT = NULL  -- NULL = tất cả thời gian
+    @MaCN INT = NULL
 AS
 BEGIN
-    SELECT 
+    SELECT
+        cn.MaCN,
         cn.TenCN,
-        COUNT(dg.MaDG) AS SoDanhGia,
-        AVG(CAST(dg.DiemChatLuongDV AS FLOAT)) AS DiemChatLuongTB,
-        AVG(CAST(dg.DiemThaiDoNV AS FLOAT)) AS DiemThaiDoTB,
-        AVG(CAST(dg.MDHaiLongTT AS FLOAT)) AS DiemHaiLongTT_TB
-    FROM DANH_GIA dg
-    JOIN CHI_NHANH cn ON dg.MaCN = cn.MaCN
-    WHERE @Nam IS NULL OR YEAR(dg.NgayDanhGia) = @Nam
+        COUNT(dg.MaDG) AS SoLuotDanhGia,
+        CASE 
+            WHEN COUNT(dg.DiemThaiDoNV) = 0 THEN 0
+            ELSE AVG(CAST(dg.DiemThaiDoNV AS FLOAT))
+        END AS DiemDanhGiaTrungBinh
+    FROM CHI_NHANH cn
+    LEFT JOIN DANH_GIA dg 
+        ON cn.MaCN = dg.MaCN
+    WHERE (@MaCN IS NULL OR cn.MaCN = @MaCN)
     GROUP BY cn.MaCN, cn.TenCN
-    ORDER BY DiemChatLuongTB DESC;
+    ORDER BY DiemDanhGiaTrungBinh DESC;
 END
 GO
 
 -- 15. Top khách hàng chi tiêu nhiều nhất (cấp chi nhánh hoặc toàn hệ thống)
 CREATE OR ALTER PROCEDURE usp_TopKhachHangChiTieu
     @MaCN INT = NULL,
-    @Nam INT = NULL,        -- NULL = tất cả năm
+    @Nam INT = NULL,
     @Top INT = 10
 AS
 BEGIN
@@ -328,21 +371,29 @@ BEGIN
         kh.MaKH,
         kh.TenKH,
         kh.SDT,
-        ISNULL(cn.TenCN, N'Toàn hệ thống') AS ChiNhanhChinh,
+        CASE 
+            WHEN @MaCN IS NULL THEN N'Toàn hệ thống'
+            ELSE cn.TenCN
+        END AS PhamViThongKe,
         SUM(dbo.fn_TinhTongTienHoaDon(hd.MaHD)) AS TongChiTieu
     FROM KHACH_HANG kh
     JOIN HOA_DON hd ON kh.MaKH = hd.MaKH
-    LEFT JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
+    JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
     WHERE (@MaCN IS NULL OR hd.MaCN = @MaCN)
       AND (@Nam IS NULL OR YEAR(hd.NgayLap) = @Nam)
-    GROUP BY kh.MaKH, kh.TenKH, kh.SDT, cn.TenCN
+    GROUP BY kh.MaKH, kh.TenKH, kh.SDT,
+             CASE 
+                 WHEN @MaCN IS NULL THEN N'Toàn hệ thống'
+                 ELSE cn.TenCN
+             END
     ORDER BY TongChiTieu DESC;
 END
 GO
+
 -- 16. Tra cứu vắc-xin theo tên, loại (LoaiVacXin), có thể thêm điều kiện ngày tiêm
 CREATE OR ALTER PROCEDURE usp_TraCuuVacXin
-    @TenVacXin NVARCHAR(100) = NULL,
-    @LoaiVacXin NVARCHAR(100) = NULL,
+    @TenVacXin NVARCHAR(100) = NULL,   -- tìm gần đúng
+    @LoaiVacXin NVARCHAR(100) = NULL,  -- phân loại chính xác
     @TuNgay DATE = NULL,
     @DenNgay DATE = NULL
 AS
@@ -362,13 +413,14 @@ BEGIN
     JOIN CT_HOA_DON_DV dv ON tp.MaHDDV = dv.MaHDDV
     JOIN HOA_DON hd ON dv.MaHD = hd.MaHD
     JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
-    WHERE (@TenVacXin IS NULL OR tp.LoaiVacXin LIKE '%' + @TenVacXin + '%')
+    WHERE (@TenVacXin IS NULL OR tp.LoaiVacXin LIKE N'%' + @TenVacXin + N'%')
       AND (@LoaiVacXin IS NULL OR tp.LoaiVacXin = @LoaiVacXin)
-      AND (@TuNgay IS NULL OR CAST(tp.NgayTiem AS DATE) >= @TuNgay)
-      AND (@DenNgay IS NULL OR CAST(tp.NgayTiem AS DATE) <= @DenNgay)
+      AND (@TuNgay IS NULL OR tp.NgayTiem >= @TuNgay)
+      AND (@DenNgay IS NULL OR tp.NgayTiem < DATEADD(DAY, 1, @DenNgay))
     ORDER BY tp.NgayTiem DESC;
 END
 GO
+
 
 -- 17. Thống kê số lượng khách hàng theo chi nhánh (hoạt động + lâu chưa quay lại)
 CREATE OR ALTER PROCEDURE usp_ThongKeKhachHangChiNhanh
@@ -378,23 +430,32 @@ AS
 BEGIN
     DECLARE @NgayCat DATE = DATEADD(MONTH, -@SoThangLau, CAST(GETDATE() AS DATE));
 
-    WITH KhachHangCuoi AS (
+    ;WITH LanCuoiKhachHang AS (
         SELECT 
             kh.MaKH,
-            MAX(hd.NgayLap) AS LanCuoiDen,
-            cn.TenCN
+            MAX(CASE 
+                    WHEN @MaCN IS NULL OR hd.MaCN = @MaCN 
+                    THEN hd.NgayLap 
+                END) AS LanCuoiDen
         FROM KHACH_HANG kh
         LEFT JOIN HOA_DON hd ON kh.MaKH = hd.MaKH
-        LEFT JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
-        WHERE (@MaCN IS NULL OR hd.MaCN = @MaCN)
-        GROUP BY kh.MaKH, cn.TenCN
+        GROUP BY kh.MaKH
     )
     SELECT
-        ISNULL(TenCN, N'Toàn hệ thống') AS ChiNhanh,
+        CASE 
+            WHEN @MaCN IS NULL THEN N'Toàn hệ thống'
+            ELSE cn.TenCN
+        END AS ChiNhanh,
         COUNT(*) AS TongKhachHang,
         COUNT(CASE WHEN LanCuoiDen >= @NgayCat THEN 1 END) AS KhachHangHoatDong,
         COUNT(CASE WHEN LanCuoiDen < @NgayCat OR LanCuoiDen IS NULL THEN 1 END) AS KhachHangLauChuaQuayLai
-    FROM KhachHangCuoi
-    GROUP BY TenCN;
+    FROM LanCuoiKhachHang lckh
+    LEFT JOIN CHI_NHANH cn ON cn.MaCN = @MaCN
+    GROUP BY 
+        CASE 
+            WHEN @MaCN IS NULL THEN N'Toàn hệ thống'
+            ELSE cn.TenCN
+        END;
 END
 GO
+
