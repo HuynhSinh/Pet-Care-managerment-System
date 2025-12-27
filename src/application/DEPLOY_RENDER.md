@@ -1,44 +1,43 @@
-# Hướng dẫn Deploy lên Render (Updated)
+# Hướng Dẫn Deploy Lên Render (Cập Nhật Sửa Lỗi)
 
-Hướng dẫn này áp dụng cho mô hình **Monorepo** nơi Server và Client chạy chung trên một Web Service.
+Tài liệu này đã được cập nhật để khắc phục lỗi "Permission denied" khi build.
 
-## 1. Kiểm tra cấu trúc dự án
-Đảm bảo bạn đã có các file sau (đã được cấu hình tự động):
-*   `package.json` (Root): Có script `build` và `start`.
-*   `server/index.js`: Có logic phục vụ file tĩnh từ thư mục `dist` và xử lý "catch-all route".
-*   `client/vite.config.ts`: Cấu hình build ra thư mục `dist`.
+## 1. Cấu Trúc Deploy
 
-## 2. Deploy lên Render
+*   **Service**: Single Web Service.
+*   **Source**: Git Repository.
+*   **Build Command**: Tự động cài đặt và build cả Client lẫn Server.
 
-1.  **Truy cập Render Dashboard:** [https://dashboard.render.com](https://dashboard.render.com)
-2.  **Tạo mới:** Chọn **New +** -> **Web Service**.
-3.  **Kết nối Git:** Chọn repository của bạn.
-4.  **Cấu hình Web Service:**
-    Điền chính xác các thông tin sau:
+## 2. Các Bước Thực Hiện
 
-    | Mục | Giá trị | Giải thích |
-    | :--- | :--- | :--- |
-    | **Name** | `petcarex-app` | Tên app của bạn. |
-    | **Root Directory** | `src/application` | Render sẽ chạy lệnh từ thư mục này. |
-    | **Environment** | `Node` | Môi trường chạy server. |
-    | **Build Command** | `npm run build` | Lệnh này sẽ build React App ra thư mục `dist`. |
-    | **Start Command** | `npm start` | Lệnh này start Node server (`server/index.js`). |
+### Bước 0: Clear Cache (Quan Trọng)
+Vì lần build trước bị lỗi, file rác có thể còn tồn tại.
+1.  Vào Dashboard của Service trên Render.
+2.  Nhấn nút **Manual Deploy** -> Chọn **Clear build cache & deploy**.
+    *   *Điều này cực kỳ quan trọng để đảm bảo Render tải lại các quyền (permissions) chính xác.*
 
-5.  **Environment Variables (Biến môi trường):**
-    Thêm các biến sau vào mục "Environment Variables" (nếu chưa có):
-    *   `NODE_VERSION`: `20`
-    *   `SUPABASE_URL`: (Copy từ file .env cũ của bạn)
-    *   `SUPABASE_KEY`: (Copy từ file .env cũ của bạn)
-    *   ... các key khác nếu có.
+### Bước 1: Cấu hình Web Service
+Nếu đã tạo Service rồi, hãy vào tab **Settings** và kiểm tra lại:
 
-6.  **Deploy:** Nhấn **Create Web Service**.
+*   **Build Command**: `npm run build`
+    *   *Lưu ý*: Lệnh này gọi script trong `package.json` gốc, nó sẽ tự động chạy:
+        1.  `npm install` (root)
+        2.  `npm install --prefix client` (client dependencies)
+        3.  `npm run build --prefix client` (client build - sử dụng `npx vite build` để tránh lỗi quyền)
+        4.  `npm install --prefix server` (server dependencies)
+*   **Start Command**: `npm start`
+*   **Root Directory**: `src/application`
 
-## 3. Cách hoạt động
-*   Khi Render chạy `npm run build`: Hệ thống sẽ dùng Vite (trong folder client) để build giao diện ra thư mục `src/application/dist`.
-*   Khi Render chạy `npm start`: Hệ thống gọi `node server/index.js`.
-*   File `server/index.js` sẽ chạy Express server trên port được cấp (chúng ta dùng `process.env.PORT` nên nó tự khớp).
-*   Express server vừa đóng vai trò API Backend, vừa phục vụ file `index.html` và các file CSS/JS tĩnh cho người dùng truy cập.
+### Bước 2: Environment Variables
+Đảm bảo bạn vẫn giữ các biến môi trường:
+*   `DATABASE_URL`: (Kết nối Supabase)
+*   `NODE_ENV`: `production`
 
-**Lưu ý:**
-*   Nếu gặp lỗi liên quan đến file không tìm thấy, hãy kiểm tra kỹ phần **Root Directory** đã đặt đúng là `src/application` chưa.
-*   Lỗi 500 thường do thiếu biến môi trường hoặc lỗi logic code server, hãy vào tab **Logs** trên Render để xem chi tiết.
+## 3. Giải Thích Lỗi Trước Đó
+
+Lỗi `sh: 1: vite: Permission denied` hoặc `code 127` xảy ra do Render không tìm thấy file thực thi `vite` trong đường dẫn mặc định hoặc bị lỗi quyền truy cập file binary.
+Tôi đã sửa bằng cách:
+1.  Thay đổi lệnh build của Client thành `npx vite build`. `npx` sẽ tự động tìm và chạy file thực thi một cách an toàn hơn.
+2.  Cập nhật script build ở Root để dùng `--prefix` thay vì `cd`, giúp quá trình chạy ổn định hơn trên môi trường Linux của Render.
+
+Chúc bạn deploy thành công! Nếu vẫn lỗi, hãy copy toàn bộ log và gửi lại cho tôi.

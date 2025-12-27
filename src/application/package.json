@@ -7,9 +7,9 @@
         "server"
     ],
     "scripts": {
-        "install-all": "npm install",
+        "install-all": "npm install && npm install --prefix client && npm install --prefix server",
         "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-        "build": "npm install && npm run build -w client -- --outDir ../dist --emptyOutDir",
+        "build": "npm install && npm install --prefix client && npm run build --prefix client && npm install --prefix server",
         "start": "node server/index.js"
     },
     "devDependencies": {

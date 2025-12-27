@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import QueryMonitor from '../app/components/QueryMonitor';
 import { Bell, Search, Settings, ChevronRight } from 'lucide-react';
 
 export default function MainLayout() {
@@ -64,13 +63,14 @@ export default function MainLayout() {
 
                 {/* Scrollable Content Area */}
                 <main className="flex-1 overflow-y-auto p-6 relative bg-[#F8F9FA]">
-                    <div className="max-w-[1600px] mx-auto">
+                    <div className="max-w-[1600px] mx-auto h-full">
                         <Outlet />
                     </div>
                 </main>
 
                 {/* Floating Monitor */}
-                <QueryMonitor />
+                {/* Floating Monitor */}
+                {/* Removed QueryMonitor */}
             </div>
         </div>
     );

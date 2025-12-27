@@ -16,12 +16,20 @@
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 0px;
+    height: 0px;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-track {
     background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    /* lighter, subtle */
+    border-radius: 3px;
+    opacity: 0.5;
 }
 
 ::-webkit-scrollbar-thumb {
