@@ -7,9 +7,9 @@
         "server"
     ],
     "scripts": {
-        "install-all": "npm install",
+        "install-all": "npm install && cd client && npm install && cd ../server && npm install",
         "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-        "build": "npm install && npm run build -w client -- --outDir ../dist --emptyOutDir",
+        "build": "echo 'Run build in specific workspaces'",
         "start": "node server/index.js"
     },
     "devDependencies": {
