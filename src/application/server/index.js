@@ -85,7 +85,18 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
 });
 
+import { sql } from 'drizzle-orm';
+
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
+
+    // Auto-check Database Connection
+    try {
+        // Simple query to verify connection
+        await db.execute(sql`SELECT 1`);
+        console.log("✅ DATABASE CONNECTION SUCCESSFUL");
+    } catch (error) {
+        console.error("❌ DATABASE CONNECTION FAILED:", error.message);
+    }
 });
