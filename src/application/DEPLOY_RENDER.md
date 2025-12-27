@@ -1,53 +1,43 @@
-# Hướng Dẫn Deploy Lên Render (Tích Hợp Một Dịch Vụ)
+# Hướng Dẫn Deploy Lên Render (Cập Nhật Sửa Lỗi)
 
-Tài liệu này hướng dẫn cách deploy cả Client và Server trong cùng **một Web Service** duy nhất lên [Render](https://render.com). Phương pháp này giúp quản lý đơn giản hơn, không cần cấu hình CORS hay link variable phức tạp.
+Tài liệu này đã được cập nhật để khắc phục lỗi "Permission denied" khi build.
 
-## 1. Cấu Trúc Deploy Mới
+## 1. Cấu Trúc Deploy
 
-Thay vì deploy 2 dịch vụ, chúng ta sử dụng cơ chế:
-1.  **Server (Node.js)**: Chịu trách nhiệm chạy API **VÀ** phục vụ các file giao diện (Static files) của React sau khi build.
-2.  **Client (React)**: Được build thành file tĩnh (`index.html`, `js`, `css`) và đặt vào thư mục mà Server có thể đọc được.
-
-Tôi đã cấu hình lại:
-*   File `package.json` gốc: Có lệnh `build` để tự động cài đặt thư viện và build Client.
-*   Server: Tự động trỏ tới thư mục `client/dist` để hiển thị web.
+*   **Service**: Single Web Service.
+*   **Source**: Git Repository.
+*   **Build Command**: Tự động cài đặt và build cả Client lẫn Server.
 
 ## 2. Các Bước Thực Hiện
 
-### Bước 1: Tạo Database (Supabase)
-*   Như cũ, bạn cần có kết nối PostgreSQL từ Supabase.
+### Bước 0: Clear Cache (Quan Trọng)
+Vì lần build trước bị lỗi, file rác có thể còn tồn tại.
+1.  Vào Dashboard của Service trên Render.
+2.  Nhấn nút **Manual Deploy** -> Chọn **Clear build cache & deploy**.
+    *   *Điều này cực kỳ quan trọng để đảm bảo Render tải lại các quyền (permissions) chính xác.*
 
-### Bước 2: Tạo Mới Web Service trên Render
+### Bước 1: Cấu hình Web Service
+Nếu đã tạo Service rồi, hãy vào tab **Settings** và kiểm tra lại:
 
-Bạn có thể dùng Blueprint (`render.yaml`) hoặc tạo thủ công (Manual). Cách dùng Blueprint là nhanh nhất.
-
-**Cách 1: Sử dụng Blueprint (Khuyên dùng)**
-1.  Vào [Render Dashboard](https://dashboard.render.com).
-2.  Chọn **New +** -> **Blueprint**.
-3.  Chọn repo `petcarex-management`.
-4.  Render tìm thấy file `render.yaml` và sẽ đề xuất tạo service `petcarex-app`.
-5.  Nhập giá trị cho biến môi trường `DATABASE_URL` (Connection string từ Supabase).
-6.  Nhấn **Apply**.
-
-**Cách 2: Cấu hình Thủ Công (Manual)**
-Nếu bạn muốn tạo thủ công, hãy chọn **New Web Service** và điền:
-*   **Name**: `petcarex-app`
-*   **Root Directory**: `src/application` (Quan trọng!)
-*   **Environment**: `Node`
 *   **Build Command**: `npm run build`
+    *   *Lưu ý*: Lệnh này gọi script trong `package.json` gốc, nó sẽ tự động chạy:
+        1.  `npm install` (root)
+        2.  `npm install --prefix client` (client dependencies)
+        3.  `npm run build --prefix client` (client build - sử dụng `npx vite build` để tránh lỗi quyền)
+        4.  `npm install --prefix server` (server dependencies)
 *   **Start Command**: `npm start`
-*   **Environment Variables**:
-    *   `DATABASE_URL`: [Your Connection String]
-    *   `NODE_ENV`: `production`
+*   **Root Directory**: `src/application`
 
-### Bước 3: Kiểm Tra
+### Bước 2: Environment Variables
+Đảm bảo bạn vẫn giữ các biến môi trường:
+*   `DATABASE_URL`: (Kết nối Supabase)
+*   `NODE_ENV`: `production`
 
-1.  Chờ Render chạy lệnh Build (sẽ mất vài phút để install và build React).
-2.  Khi hoàn tất, truy cập vào đường link `https://[your-app].onrender.com`.
-3.  Bạn sẽ thấy giao diện React hiện lên. Khi đăng nhập/gọi API, nó sẽ gọi trực tiếp vào chính domain đó (ví dụ `/api/auth/login`) và Server sẽ xử lý thành công.
+## 3. Giải Thích Lỗi Trước Đó
 
-## Giải Thích Thay Đổi
+Lỗi `sh: 1: vite: Permission denied` hoặc `code 127` xảy ra do Render không tìm thấy file thực thi `vite` trong đường dẫn mặc định hoặc bị lỗi quyền truy cập file binary.
+Tôi đã sửa bằng cách:
+1.  Thay đổi lệnh build của Client thành `npx vite build`. `npx` sẽ tự động tìm và chạy file thực thi một cách an toàn hơn.
+2.  Cập nhật script build ở Root để dùng `--prefix` thay vì `cd`, giúp quá trình chạy ổn định hơn trên môi trường Linux của Render.
 
-*   **Server Code**: Đã sửa để đọc file tĩnh từ thư mục `../client/dist`.
-*   **Package.json**: Script `build` sẽ chạy lần lượt: `npm install` (client) -> `npm run build` (client) -> `npm install` (server).
-*   **Routing**: Mọi đường dẫn không phải API sẽ trả về `index.html` của React, giúp React Router hoạt động bình thường kể cả khi reload trang.
+Chúc bạn deploy thành công! Nếu vẫn lỗi, hãy copy toàn bộ log và gửi lại cho tôi.
