@@ -1,0 +1,24 @@
+{
+    "name": "petcarex-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "client",
+        "server"
+    ],
+    "scripts": {
+        "install-all": "npm install",
+        "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+        "build": "npm install && npm run build -w client -- --outDir ../dist --emptyOutDir",
+        "start": "node server/index.js"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "@supabase/supabase-js": "^2.39.1"
+    }
+}
