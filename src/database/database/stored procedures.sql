@@ -371,21 +371,23 @@ BEGIN
         kh.MaKH,
         kh.TenKH,
         kh.SDT,
-        CASE 
-            WHEN @MaCN IS NULL THEN N'Toàn hệ thống'
-            ELSE cn.TenCN
-        END AS PhamViThongKe,
-        SUM(dbo.fn_TinhTongTienHoaDon(hd.MaHD)) AS TongChiTieu
+        ISNULL(cn.TenCN, N'Toàn hệ thống') AS ChiNhanhChinh,
+        SUM(
+            ISNULL(ctsp.SoLuong * ctsp.DonGia, 0)
+          + ISNULL(ctdv.DonGia, 0)
+        ) AS TongChiTieu
     FROM KHACH_HANG kh
     JOIN HOA_DON hd ON kh.MaKH = hd.MaKH
-    JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
+    LEFT JOIN CHI_NHANH cn ON hd.MaCN = cn.MaCN
+    LEFT JOIN CT_HOA_DON_SP ctsp ON hd.MaHD = ctsp.MaHD
+    LEFT JOIN CT_HOA_DON_DV ctdv ON hd.MaHD = ctdv.MaHD
     WHERE (@MaCN IS NULL OR hd.MaCN = @MaCN)
       AND (@Nam IS NULL OR YEAR(hd.NgayLap) = @Nam)
-    GROUP BY kh.MaKH, kh.TenKH, kh.SDT,
-             CASE 
-                 WHEN @MaCN IS NULL THEN N'Toàn hệ thống'
-                 ELSE cn.TenCN
-             END
+    GROUP BY
+        kh.MaKH,
+        kh.TenKH,
+        kh.SDT,
+        cn.TenCN
     ORDER BY TongChiTieu DESC;
 END
 GO
