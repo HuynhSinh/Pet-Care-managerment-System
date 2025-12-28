@@ -5,6 +5,29 @@ SET STATISTICS TIME ON;
 SET STATISTICS IO ON;
 GO
 
+--====================================================================
+--Kịch bản 1 Tra cứu hồ sơ sức khỏe và lịch sử dịch vụ của Thú cưng
+--====================================================================
+-- Index 1: Tìm kiếm Khách hàng theo SĐT (Tần suất rất cao)
+IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_KHACH_HANG_SDT' AND object_id = OBJECT_ID('KHACH_HANG'))
+    DROP INDEX IX_KHACH_HANG_SDT ON KHACH_HANG;
+GO
+CREATE INDEX IX_KHACH_HANG_SDT ON KHACH_HANG(SDT);
+GO
+
+-- Index 2: Tìm nhanh Thú cưng theo Mã khách hàng (JOIN tối ưu)
+IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_THU_CUNG_MaKH' AND object_id = OBJECT_ID('THU_CUNG'))
+    DROP INDEX IX_THU_CUNG_MaKH ON THU_CUNG;
+GO
+CREATE INDEX IX_THU_CUNG_MaKH ON THU_CUNG(MaKH) INCLUDE (TenTC, Giong);
+GO
+
+-- Index 3: Lấy lịch sử khám theo Thú cưng, sắp xếp ngày giảm dần (Covering Index)
+IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_KHAM_BENH_MaTC_Ngay' AND object_id = OBJECT_ID('TT_KHAM_BENH'))
+    DROP INDEX IX_KHAM_BENH_MaTC_Ngay ON TT_KHAM_BENH;
+GO
+CREATE INDEX IX_KHAM_BENH_MaTC_Ngay ON TT_KHAM_BENH(MaTC, NgayKham DESC) INCLUDE (TrieuChung, ChuanDoan);
+
 PRINT '=== DEMO CHẠY CHẬM (ÉP QUÉT TOÀN BẢNG) ===';
 GO
 -- Xóa cache để công bằng
@@ -34,9 +57,9 @@ ORDER BY kb.NgayKham DESC;
 GO
 
 
---=============
---KỊCH BẢN 2
---=============
+--============================================
+--KỊCH BẢN 2 Quản lý Bán lẻ & Tồn kho Sản phẩm
+--============================================
 -- 1. INDEX TỐI ƯU 
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_SAN_PHAM_Inventory_Check')
 BEGIN
@@ -75,9 +98,9 @@ WHERE LoaiSP = N'Thuốc'
 ORDER BY SoLuongTonKho ASC;
 GO
 
---============
---KỊCH BẢN 3
---============
+--===========================================================
+--KỊCH BẢN 3  Thống kê Doanh thu Chi nhánh (Cuối ngày/Tháng)
+--===========================================================
 -- 1. INDEX TỐI ƯU 
 -- Covering Index: Chứa cả ngày lập, mã chi nhánh và tiền để SQL không cần vào bảng chính
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_HOA_DON_Revenue_Report')
@@ -115,7 +138,7 @@ GROUP BY MaCN;
 GO
 
 --=======
---KỊCH BẢN 4
+--KỊCH BẢN 4 Đánh giá Hiệu suất Nhân viên qua số công việc nhân viên đó nhận
 --========
 -- 1. INDEX TỐI ƯU 
 -- Index trên MaNV trong bảng HOA_DON giúp việc gom nhóm (GROUP BY) và JOIN cực nhanh
@@ -155,9 +178,9 @@ GROUP BY nv.MaNV, nv.HoTen, nv.ChucVu
 ORDER BY SoLuongGiaoDich DESC;
 GO
 
---=================
---KỊCH BẢN 5
---=================
+--=================================================================
+--KỊCH BẢN 5 Phân tích Xu hướng Dịch vụ & Doanh thu Toàn hệ thống
+--=================================================================
 -- INDEX TỐI ƯU (Chạy cái này trước)
 -- Index trên NgayLap giúp lọc nhanh 6 tháng gần nhất
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_HOA_DON_Date_Filter')
@@ -199,7 +222,7 @@ GROUP BY dv.LoaiDV;
 GO
 
 --==============
---KỊCH BẢN 6
+--KỊCH BẢN 6 Phân tích Khách hàng & Loyalty
 --==============
 -- 1. INDEX TỐI ƯU 
 -- Index đa cột giúp SQL tìm ngày gần nhất (MAX) của mỗi khách hàng cực nhanh
@@ -240,9 +263,9 @@ HAVING MAX(hd.NgayLap) < DATEADD(MONTH, -6, GETDATE())
 ORDER BY NgayGiaoDichCuoi ASC;
 GO
 
---===========
---KỊCH BẢN 7
---===========
+--=====================================
+--KỊCH BẢN 7 Thống kê Vắc-xin & Dịch tễ
+--=====================================
 -- 1. INDEX TỐI ƯU 
 -- Covering Index trên bảng Tiêm phòng giúp lọc loại vắc-xin và mã thú cưng cực nhanh
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_TIEM_PHONG_Stats')
