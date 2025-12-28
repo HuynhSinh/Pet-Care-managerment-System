@@ -13,8 +13,8 @@ GO
 
 SELECT tc.TenTC, tc.Giong, kb.NgayKham, kb.TrieuChung, kb.ChuanDoan
 FROM KHACH_HANG kh WITH (INDEX(0)) -- Ép bảng khách hàng quét toàn bộ
-JOIN THU_CUNG tc WITH (INDEX(0)) ON kh.MaKH = tc.MaKH -- Thêm điều kiện ON ở đây
-JOIN TT_KHAM_BENH kb WITH (INDEX(0)) ON tc.MaTC = kb.MaTC -- Thêm điều kiện ON ở đây
+JOIN THU_CUNG tc WITH (INDEX(0)) ON kh.MaKH = tc.MaKH 
+JOIN TT_KHAM_BENH kb WITH (INDEX(0)) ON tc.MaTC = kb.MaTC 
 WHERE kh.SDT = '0900000045'
 ORDER BY kb.NgayKham DESC;
 GO
@@ -37,8 +37,7 @@ GO
 --=============
 --KỊCH BẢN 2
 --=============
--- 1. ĐẢM BẢO ĐÃ CÓ INDEX TỐI ƯU (Chạy cái này trước)
--- Index này giúp tìm nhanh sản phẩm theo loại và lọc tồn kho thấp
+-- 1. INDEX TỐI ƯU 
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_SAN_PHAM_Inventory_Check')
 BEGIN
     CREATE INDEX IX_SAN_PHAM_Inventory_Check 
@@ -61,7 +60,7 @@ WHERE LoaiSP = N'Thuốc'
 ORDER BY SoLuongTonKho ASC;
 GO
 
--- THÍ NGHIỆM 2.2: CHẠY NHANH (DÙNG INDEX TỐI ƯU
+-- THÍ NGHIỆM 2.2: CHẠY NHANH (DÙNG INDEX TỐI ƯU)
 
 PRINT '=== KỊCH BẢN 2: CHẠY NHANH (CÓ INDEX) ===';
 GO
@@ -79,7 +78,7 @@ GO
 --============
 --KỊCH BẢN 3
 --============
--- 1. ĐẢM BẢO ĐÃ CÓ INDEX TỐI ƯU (Chạy cái này trước)
+-- 1. INDEX TỐI ƯU 
 -- Covering Index: Chứa cả ngày lập, mã chi nhánh và tiền để SQL không cần vào bảng chính
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_HOA_DON_Revenue_Report')
 BEGIN
@@ -88,7 +87,7 @@ BEGIN
     INCLUDE (TongTien);
 END
 GO
--- THÍ NGHIỆM 3.1: CHẠY CHẬM (ÉP QUÉT TOÀN BẢNG 100.000 HÓA ĐƠN)
+--  CHẠY CHẬM (ÉP QUÉT TOÀN BẢNG 100.000 HÓA ĐƠN)
 PRINT '=== KỊCH BẢN 3: CHẠY CHẬM (KHÔNG INDEX) ===';
 GO
 -- Xóa bộ nhớ đệm để công bằng
@@ -102,7 +101,7 @@ GROUP BY MaCN;
 GO
 
 
--- THÍ NGHIỆM 3.2: CHẠY NHANH (DÙNG INDEX TỐI ƯU)
+-- CHẠY NHANH (DÙNG INDEX TỐI ƯU)
 PRINT '=== KỊCH BẢN 3: CHẠY NHANH (CÓ INDEX) ===';
 GO
 -- Xóa bộ nhớ đệm để công bằng
@@ -118,7 +117,7 @@ GO
 --=======
 --KỊCH BẢN 4
 --========
--- 1. ĐẢM BẢO ĐÃ CÓ INDEX TỐI ƯU (Chạy cái này trước)
+-- 1. INDEX TỐI ƯU 
 -- Index trên MaNV trong bảng HOA_DON giúp việc gom nhóm (GROUP BY) và JOIN cực nhanh
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_HOA_DON_Staff_Performance')
 BEGIN
@@ -128,7 +127,7 @@ BEGIN
 END
 GO
 
--- THÍ NGHIỆM 4.1: CHẠY CHẬM (ÉP QUÉT TOÀN BẢNG)
+-- CHẠY CHẬM (ÉP QUÉT TOÀN BẢNG)
 PRINT '=== KỊCH BẢN 4: CHẠY CHẬM (KHÔNG INDEX) ===';
 GO
 -- Xóa bộ nhớ đệm để công bằng
@@ -137,12 +136,12 @@ GO
 
 SELECT nv.MaNV, nv.HoTen, nv.ChucVu, COUNT(hd.MaHD) AS SoLuongGiaoDich
 FROM NHAN_VIEN nv
-LEFT JOIN HOA_DON hd WITH (INDEX(0)) ON nv.MaNV = hd.MaNV -- Ép quét toàn bảng HOA_DON
+LEFT JOIN HOA_DON hd WITH (INDEX(0)) ON nv.MaNV = hd.MaNV 
 GROUP BY nv.MaNV, nv.HoTen, nv.ChucVu
 ORDER BY SoLuongGiaoDich DESC;
 GO
 
--- THÍ NGHIỆM 4.2: CHẠY NHANH (DÙNG INDEX TỐI ƯU)
+-- CHẠY NHANH (DÙNG INDEX TỐI ƯU)
 PRINT '=== KỊCH BẢN 4: CHẠY NHANH (CÓ INDEX) ===';
 GO
 -- Xóa bộ nhớ đệm để công bằng
@@ -159,7 +158,7 @@ GO
 --=================
 --KỊCH BẢN 5
 --=================
--- 1. ĐẢM BẢO ĐÃ CÓ INDEX TỐI ƯU (Chạy cái này trước)
+-- INDEX TỐI ƯU (Chạy cái này trước)
 -- Index trên NgayLap giúp lọc nhanh 6 tháng gần nhất
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_HOA_DON_Date_Filter')
 BEGIN
@@ -172,7 +171,7 @@ BEGIN
     CREATE INDEX IX_CT_DV_Performance ON CT_HOA_DON_DV(MaHD, MaDV) INCLUDE (DonGia);
 END
 GO
--- THÍ NGHIỆM 5.1: CHẠY CHẬM (KHÔNG INDEX)
+-- CHẠY CHẬM (KHÔNG INDEX)
 PRINT '=== KỊCH BẢN 5: CHẠY CHẬM (KHÔNG INDEX) ===';
 GO
 CHECKPOINT; DBCC DROPCLEANBUFFERS; DBCC FREEPROCCACHE;
@@ -185,7 +184,7 @@ JOIN HOA_DON h WITH (INDEX(0)) ON ct.MaHD = h.MaHD
 WHERE h.NgayLap >= DATEADD(MONTH, -6, GETDATE())
 GROUP BY dv.LoaiDV;
 GO
---THÍ NGHIỆM 5.2: CHẠY NHANH (CÓ INDEX)
+--CHẠY NHANH (CÓ INDEX)
 PRINT '=== KỊCH BẢN 5: CHẠY NHANH (CÓ INDEX) ===';
 GO
 CHECKPOINT; DBCC DROPCLEANBUFFERS; DBCC FREEPROCCACHE;
@@ -202,7 +201,7 @@ GO
 --==============
 --KỊCH BẢN 6
 --==============
--- 1. ĐẢM BẢO ĐÃ CÓ INDEX TỐI ƯU (Chạy cái này trước)
+-- 1. INDEX TỐI ƯU 
 -- Index đa cột giúp SQL tìm ngày gần nhất (MAX) của mỗi khách hàng cực nhanh
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_HOA_DON_Customer_Loyalty')
 BEGIN
@@ -211,7 +210,7 @@ BEGIN
 END
 GO
 
--- THÍ NGHIỆM 6.1: CHẠY CHẬM (KHÔNG INDEX - QUÉT 100K HÓA ĐƠN)
+-- CHẠY CHẬM (KHÔNG INDEX - QUÉT 100K HÓA ĐƠN)
 PRINT '=== KỊCH BẢN 6: CHẠY CHẬM (KHÔNG INDEX) ===';
 GO
 CHECKPOINT; DBCC DROPCLEANBUFFERS; DBCC FREEPROCCACHE;
@@ -226,7 +225,7 @@ HAVING MAX(hd.NgayLap) < DATEADD(MONTH, -6, GETDATE())
 ORDER BY NgayGiaoDichCuoi ASC;
 GO
 
--- THÍ NGHIỆM 6.2: CHẠY NHANH (CÓ INDEX TỐI ƯU)
+--CHẠY NHANH (CÓ INDEX TỐI ƯU)
 PRINT '=== KỊCH BẢN 6: CHẠY NHANH (CÓ INDEX) ===';
 GO
 CHECKPOINT; DBCC DROPCLEANBUFFERS; DBCC FREEPROCCACHE;
@@ -242,9 +241,9 @@ ORDER BY NgayGiaoDichCuoi ASC;
 GO
 
 --===========
---KỊCH BẢN 8
+--KỊCH BẢN 7
 --===========
--- 1. ĐẢM BẢO ĐÃ CÓ INDEX TỐI ƯU (Chạy cái này trước)
+-- 1. INDEX TỐI ƯU 
 -- Covering Index trên bảng Tiêm phòng giúp lọc loại vắc-xin và mã thú cưng cực nhanh
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_TIEM_PHONG_Stats')
 BEGIN
@@ -260,8 +259,8 @@ BEGIN
 END
 GO
 
--- THÍ NGHIỆM 8.1: CHẠY CHẬM (KHÔNG INDEX)
-PRINT '=== KỊCH BẢN 8: CHẠY CHẬM (KHÔNG INDEX) ===';
+-- CHẠY CHẬM (KHÔNG INDEX)
+PRINT '=== KỊCH BẢN 7: CHẠY CHẬM (KHÔNG INDEX) ===';
 GO
 -- Xóa bộ nhớ đệm để công bằng
 CHECKPOINT; DBCC DROPCLEANBUFFERS; DBCC FREEPROCCACHE;
@@ -275,8 +274,8 @@ ORDER BY SoLuongMuiTiem DESC;
 GO
 
 
--- THÍ NGHIỆM 8.2: CHẠY NHANH (CÓ INDEX)
-PRINT '=== KỊCH BẢN 8: CHẠY NHANH (CÓ INDEX) ===';
+-- CHẠY NHANH (CÓ INDEX)
+PRINT '=== KỊCH BẢN 7: CHẠY NHANH (CÓ INDEX) ===';
 GO
 -- Xóa bộ nhớ đệm để công bằng
 CHECKPOINT; DBCC DROPCLEANBUFFERS; DBCC FREEPROCCACHE;

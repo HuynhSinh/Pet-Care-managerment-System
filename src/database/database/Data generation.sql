@@ -2,10 +2,9 @@
 GO
 SET NOCOUNT ON;
 
-PRINT '=== BAT DAU KHOI TAO DU LIEU NEN TANG (NEW SCHEMA) ===';
 
 -- =================================================================
--- 1. DỌN DẸP DỮ LIỆU CŨ (THEO THỨ TỰ CON TRƯỚC - CHA SAU)
+-- 1. DỌN DẸP DỮ LIỆU CŨ 
 -- =================================================================
 PRINT '1. Don dep du lieu cu...';
 
@@ -13,7 +12,7 @@ PRINT '1. Don dep du lieu cu...';
 DELETE FROM TT_KHAM_BENH;
 DELETE FROM TT_TIEM_PHONG;
 DELETE FROM CT_HOA_DON_SP;
-DELETE FROM CT_HOA_DON_DV; -- Bảng này giờ chứa MaDV
+DELETE FROM CT_HOA_DON_DV; 
 DELETE FROM DANH_GIA;
 DELETE FROM LICH_SU_DIEU_DONG;
 DELETE FROM DICH_VU_CUNG_CAP;
@@ -41,7 +40,7 @@ DBCC CHECKIDENT ('GOI_TIEM', RESEED, 0);
 DELETE FROM SAN_PHAM;
 DBCC CHECKIDENT ('SAN_PHAM', RESEED, 0);
 
-DELETE FROM DICH_VU; -- Dịch vụ phải xóa sau Dịch vụ cung cấp
+DELETE FROM DICH_VU; 
 DBCC CHECKIDENT ('DICH_VU', RESEED, 0);
 
 DELETE FROM CHI_NHANH;
@@ -119,7 +118,7 @@ DBCC CHECKIDENT ('SAN_PHAM', RESEED, 0);
 PRINT '1. Da don dep du lieu cu.';
 
 -- =================================================================
--- 2. TẠO TỪ ĐIỂN TỪ KHÓA (GIỮ NGUYÊN)
+-- 2. TẠO TỪ ĐIỂN TỪ KHÓA 
 -- =================================================================
 DECLARE @Loai TABLE (ID INT IDENTITY(1,1), Ten NVARCHAR(50), Nhom NVARCHAR(50));
 INSERT INTO @Loai VALUES 
@@ -164,7 +163,7 @@ DECLARE @MaxQuyCach INT = (SELECT COUNT(*) FROM @QuyCach);
 -- =================================================================
 PRINT '2. Bat dau chay vong lap (Loop)...';
 DECLARE @i INT = 1;
-DECLARE @Target INT = 200000; -- Mục tiêu 200k dòng
+DECLARE @Target INT = 200000; 
 
 -- Biến tạm để lưu giá trị random
 DECLARE @R_Loai INT, @R_Brand INT, @R_Feature INT, @R_QuyCach INT;
@@ -199,7 +198,7 @@ BEGIN
 
     SET @i = @i + 1;
 
-    -- In tiến độ mỗi 5000 dòng để biết máy không bị đơ
+    -- In tiến độ mỗi 5000 dòng 
     IF @i % 5000 = 0 
         PRINT '   -> Da sinh xong ' + CAST(@i AS VARCHAR) + ' san pham...';
 END
@@ -213,7 +212,7 @@ GO
 PRINT '=== SINH LAI 70.000 GOI_TIEM  ===';
 
 -- 1. Xóa dữ liệu cũ để làm lại cho sạch
-DELETE FROM TT_TIEM_PHONG; -- Xóa bảng con nếu có
+DELETE FROM TT_TIEM_PHONG; 
 DELETE FROM GOI_TIEM;
 DBCC CHECKIDENT ('GOI_TIEM', RESEED, 0);
 
@@ -241,20 +240,18 @@ DECLARE @StrTarget NVARCHAR(50), @StrType NVARCHAR(50), @StrDuration NVARCHAR(50
 DECLARE @FinalName NVARCHAR(200);
 DECLARE @RandTime INT, @RandUuDai INT;
 
--- [FIX] Khai báo thêm biến lưu ID Random để tính toán trước
 DECLARE @R_Target INT, @R_Type INT, @R_Duration INT, @R_Level INT;
 
 PRINT 'Dang sinh du lieu...';
 
 WHILE @j <= 70000
 BEGIN
-    -- [FIX] Bước 1: Tính toán ID Random ra biến trước (Ổn định giá trị)
+    
     SET @R_Target   = (ABS(CAST(CHECKSUM(NEWID()) AS BIGINT)) % @MaxTarget) + 1;
     SET @R_Type     = (ABS(CAST(CHECKSUM(NEWID()) AS BIGINT)) % @MaxType) + 1;
     SET @R_Duration = (ABS(CAST(CHECKSUM(NEWID()) AS BIGINT)) % @MaxDuration) + 1;
     SET @R_Level    = (ABS(CAST(CHECKSUM(NEWID()) AS BIGINT)) % @MaxLevel) + 1;
 
-    -- [FIX] Bước 2: Select dựa trên biến ID đã tính (Chắc chắn tìm thấy 1 dòng)
     SELECT @StrTarget = Ten FROM @Target WHERE ID = @R_Target;
     SELECT @StrType = Ten FROM @Type WHERE ID = @R_Type;
     SELECT @StrDuration = Ten FROM @Duration WHERE ID = @R_Duration;
@@ -281,7 +278,7 @@ BEGIN
     IF @j % 10000 = 0 PRINT '   -> Da sinh ' + CAST(@j AS VARCHAR) + ' goi tiem...';
 END
 
-PRINT '-> OK: 70.000 GOI TIEM (KHONG LOI NULL)!';
+PRINT '-> OK: 70.000 GOI TIEM !';
 GO
 
 
@@ -332,7 +329,7 @@ DECLARE @MaxTen INT = (SELECT COUNT(*) FROM @Ten);
 -- Biến dùng chung
 DECLARE @HoTen NVARCHAR(60), @RandHo NVARCHAR(20), @RandDem NVARCHAR(20), @RandTen NVARCHAR(20);
 DECLARE @GioiTinh NVARCHAR(10);
-DECLARE @RandVal BIGINT; -- Dùng BIGINT để tránh tràn số
+DECLARE @RandVal BIGINT; -- tránh tràn số
 
 -- =================================================================
 -- PHẦN 2: SINH 500 NHÂN VIÊN
@@ -461,10 +458,10 @@ PRINT '=== BAT DAU SINH 2000 THU CUNG ===';
 -- =================================================================
 -- 1. DỌN DẸP DỮ LIỆU CŨ (Tránh lỗi khóa ngoại)
 -- =================================================================
--- Xóa các bảng con sử dụng Thú cưng trước
+-- Xóa các bảng con sử dụng Thú cưng 
 DELETE FROM TT_KHAM_BENH;
 DELETE FROM TT_TIEM_PHONG;
-DELETE FROM CT_HOA_DON_SP; -- Nếu có logic liên quan
+DELETE FROM CT_HOA_DON_SP;
 -- Xóa bảng Thú cưng
 DELETE FROM THU_CUNG;
 DBCC CHECKIDENT ('THU_CUNG', RESEED, 0);
@@ -472,7 +469,6 @@ DBCC CHECKIDENT ('THU_CUNG', RESEED, 0);
 -- =================================================================
 -- 2. CHUẨN BỊ DỮ LIỆU TỪ ĐIỂN
 -- =================================================================
--- Kho tên thú cưng phổ biến
 DECLARE @TenPet TABLE (ID INT IDENTITY(1,1), Ten NVARCHAR(30));
 INSERT INTO @TenPet VALUES 
 (N'Milu'), (N'Misa'), (N'Lu'), (N'Kiki'), (N'Lucky'), (N'Bông'), (N'Mực'), (N'Vàng'), 
@@ -659,7 +655,7 @@ DECLARE @CntHD INT = (SELECT COUNT(*) FROM #MapHD);
 PRINT '   -> Xong HOA_DON.';
 
 -- =================================================================
--- 4. SINH 100.000 CT_HOA_DON_SP (Fixed Logic)
+-- 4. SINH 100.000 CT_HOA_DON_SP 
 -- =================================================================
 PRINT '4. Dang sinh 100.000 CT_HOA_DON_SP...';
 
@@ -673,7 +669,7 @@ SELECT
 INTO #StagingSP
 FROM #MapHD;
 
--- Insert bằng cách JOIN (Thay vì CROSS APPLY lỗi)
+-- Insert bằng cách JOIN 
 INSERT INTO CT_HOA_DON_SP (MaHD, MaSP, SoLuong, DonGia)
 SELECT 
     S.MaHD,
@@ -697,7 +693,7 @@ FROM #MapHD;
 PRINT '   -> Xong CT_HOA_DON_DV.';
 
 -- =================================================================
--- 6. SINH 100.000 TT_KHAM_BENH (Fixed Logic)
+-- 6. SINH 100.000 TT_KHAM_BENH 
 -- =================================================================
 PRINT '6. Dang sinh 100.000 TT_KHAM_BENH...';
 
@@ -718,7 +714,7 @@ FROM #MapHDDV;
 INSERT INTO TT_KHAM_BENH (MaHDDV, TrieuChung, ChuanDoan, ToaThuoc, NgayHenTaiKham, MaTC, BSPhuTrach)
 SELECT 
     S.MaHDDV,
-    N'Sốt, bỏ ăn', -- Có thể random thêm nếu cần
+    N'Sốt, bỏ ăn', 
     N'Rối loạn tiêu hóa',
     N'Men tiêu hóa (2 gói)',
     DATEADD(DAY, 5, GETDATE()),
@@ -840,7 +836,7 @@ BEGIN
     -- Tăng biến đếm 
     SET @i = @i + 1;
     
-    -- In tiến độ (Đã sửa lỗi cú pháp)
+    -- In tiến độ 
     IF @i % 10 = 0 
     BEGIN
         SET @CurrentCount = @i * @BatchSize;
@@ -967,5 +963,5 @@ UNION ALL
 SELECT N'15. TT_TIEM_PHONG', COUNT(*) FROM TT_TIEM_PHONG
 UNION ALL
 SELECT N'16. DANH_GIA', COUNT(*) FROM DANH_GIA
-ORDER BY SoLuong DESC; -- Sắp xếp để thấy bảng nào nhiều dữ liệu nhất lên đầu
+ORDER BY SoLuong DESC; 
 GO

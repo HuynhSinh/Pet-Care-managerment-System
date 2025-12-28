@@ -1,7 +1,7 @@
 ﻿USE PetCareX;
 GO
 
-PRINT '=== BUOC 1: XOA CAC DOI TUONG PHU THUOC (FK, INDEX, PK) ===';
+--XOA CAC DOI TUONG PHU THUOC (FK, INDEX, PK)
 
 -- 1. Xóa các Khóa ngoại (Foreign Keys)
 DECLARE @sql_fk NVARCHAR(MAX) = '';
@@ -26,7 +26,7 @@ PRINT '-> Da don dep sach se cac doi tuong phu thuoc!';
 GO
 
 -- =========================================================
-PRINT '=== BUOC 2: CAU HINH PARTITION ===';
+-- BUOC 2: CAU HINH PARTITION 
 
 -- Xóa Scheme và Function cũ nếu đã có
 IF EXISTS (SELECT * FROM sys.partition_schemes WHERE name = 'ps_NgayLap') DROP PARTITION SCHEME ps_NgayLap;
@@ -40,7 +40,7 @@ CREATE PARTITION SCHEME ps_NgayLap AS PARTITION pf_NgayLap ALL TO ([PRIMARY]);
 GO
 
 -- =========================================================
-PRINT '=== BUOC 3: SUA COT VA AP DUNG PARTITION ===';
+-- BUOC 3: SUA COT VA AP DUNG PARTITION
 
 -- Bây giờ có thể sửa cột thành NOT NULL vì không còn Index nào chặn nữa
 ALTER TABLE HOA_DON ALTER COLUMN NgayLap DATETIME NOT NULL;
@@ -54,7 +54,7 @@ ON ps_NgayLap(NgayLap);
 GO
 
 -- =========================================================
-PRINT '=== BUOC 4: KIEM TRA PHAN MANH DU LIEU ===';
+-- KIEM TRA PHAN MANH DU LIEU 
 
 SELECT 
     p.partition_number AS [Phân vùng số],
